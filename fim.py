@@ -1,6 +1,12 @@
 import hashlib
 import os
 import time
+from datetime import datetime
+
+# Unified timestamped logging helper
+def log_event(status, path):
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    print(f"[{timestamp}] {status}: {path}")
 
 def calculate_hash(filepath):
     sha256 = hashlib.sha256()
@@ -18,11 +24,12 @@ def create_baseline(target_dir="target"):
             path = os.path.join(target_dir, filename)
             if os.path.isfile(path):
                 f.write(f"{path}|{calculate_hash(path)}\n")
-    print("[+] Baseline created in baseline.txt")
+    log_event("BASELINE", "baseline.txt written successfully")
 
+#Replaced raw prints with timestamped logs
 def check_integrity(target_dir="target"):
     if not os.path.exists("baseline.txt"):
-        print("[-] Error: No baseline found. Create one first.")
+        log_event("ERROR", "No baseline found. Create one first.")
         return
     with open("baseline.txt", "r") as f:
         baseline = dict(line.strip().split("|") for line in f)
@@ -30,23 +37,21 @@ def check_integrity(target_dir="target"):
     for path, base_hash in baseline.items():
         curr_hash = calculate_hash(path)
         if curr_hash is None:
-            print(f"[!] DELETED: {path}")
+            log_event("DELETED", path)
         elif curr_hash != base_hash:
-            print(f"[!] TAMPERED: {path}")
+            log_event("TAMPERED", path)
         else:
-            print(f"[+] INTACT: {path}")
+            log_event("INTACT", path)
 
     for filename in os.listdir(target_dir):
         path = os.path.join(target_dir, filename)
         if os.path.isfile(path) and path not in baseline:
-            print(f"[!] NEW/UNTRACKED: {path}")
+            log_event("UNTRACKED", path)
 
-# Continuous polling loop with graceful shutdown
 def monitor(target_dir="target", interval=3):
     print(f"[*] Monitoring '{target_dir}' every {interval}s (Ctrl+C to quit)...")
     try:
         while True:
-            print("--- Scan Cycle ---")
             check_integrity(target_dir)
             time.sleep(interval)
     except KeyboardInterrupt:
