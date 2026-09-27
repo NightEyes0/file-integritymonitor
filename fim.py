@@ -1,5 +1,6 @@
 import hashlib
 import os
+import time
 
 def calculate_hash(filepath):
     sha256 = hashlib.sha256()
@@ -19,7 +20,6 @@ def create_baseline(target_dir="target"):
                 f.write(f"{path}|{calculate_hash(path)}\n")
     print("[+] Baseline created in baseline.txt")
 
-#Tracks intact, modified, deleted, and newly added files
 def check_integrity(target_dir="target"):
     if not os.path.exists("baseline.txt"):
         print("[-] Error: No baseline found. Create one first.")
@@ -36,12 +36,27 @@ def check_integrity(target_dir="target"):
         else:
             print(f"[+] INTACT: {path}")
 
-    #Identify files in directory that are absent from baseline
     for filename in os.listdir(target_dir):
         path = os.path.join(target_dir, filename)
         if os.path.isfile(path) and path not in baseline:
             print(f"[!] NEW/UNTRACKED: {path}")
 
+# Continuous polling loop with graceful shutdown
+def monitor(target_dir="target", interval=3):
+    print(f"[*] Monitoring '{target_dir}' every {interval}s (Ctrl+C to quit)...")
+    try:
+        while True:
+            print("--- Scan Cycle ---")
+            check_integrity(target_dir)
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        print("\n[-] Monitoring stopped.")
+
 if __name__ == "__main__":
-    choice = input("Select mode - (1) Baseline, (2) Verify: ").strip()
-    create_baseline() if choice == "1" else check_integrity()
+    choice = input("Select mode - (1) Baseline, (2) Verify, (3) Live Monitor: ").strip()
+    if choice == "1":
+        create_baseline()
+    elif choice == "2":
+        check_integrity()
+    else:
+        monitor()
