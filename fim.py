@@ -3,10 +3,13 @@ import os
 import time
 from datetime import datetime
 
-# Unified timestamped logging helper
+# Appends timestamped events to both console and audit.log
 def log_event(status, path):
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    print(f"[{timestamp}] {status}: {path}")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    entry = f"[{timestamp}] {status}: {path}"
+    print(entry)
+    with open("audit.log", "a") as f:
+        f.write(entry + "\n")
 
 def calculate_hash(filepath):
     sha256 = hashlib.sha256()
@@ -26,7 +29,6 @@ def create_baseline(target_dir="target"):
                 f.write(f"{path}|{calculate_hash(path)}\n")
     log_event("BASELINE", "baseline.txt written successfully")
 
-#Replaced raw prints with timestamped logs
 def check_integrity(target_dir="target"):
     if not os.path.exists("baseline.txt"):
         log_event("ERROR", "No baseline found. Create one first.")
