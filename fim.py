@@ -11,7 +11,6 @@ def calculate_hash(filepath):
     except FileNotFoundError:
         return None
 
-# Scans directory and writes file signatures to baseline.txt
 def create_baseline(target_dir="target"):
     with open("baseline.txt", "w") as f:
         for filename in os.listdir(target_dir):
@@ -20,8 +19,18 @@ def create_baseline(target_dir="target"):
                 f.write(f"{path}|{calculate_hash(path)}\n")
     print("[+] Baseline created in baseline.txt")
 
-#  Automatically prepares a target directory and records baseline
-if __name__ == "__main__":
-    if not os.path.exists("target"):
-        os.makedirs("target")
-    create_baseline()
+# Compares live file hashes against recorded baseline
+def check_integrity():
+    if not os.path.exists("baseline.txt"):
+        print("[-] Error: No baseline found. Create one first.")
+        return
+    with open("baseline.txt", "r") as f:
+        for line in f:
+            path, base_hash = line.strip().split("|")
+            curr_hash = calculate_hash(path)
+            if curr_hash is None:
+                print(f"[!] DELETED: {path}")
+            elif curr_hash != base_hash:
+                print(f"[!] TAMPERED: {path}")
+            else:
+                print(f"[+] INTACT: {path}")
