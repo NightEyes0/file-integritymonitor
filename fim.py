@@ -1,4 +1,5 @@
 import hashlib
+import os
 
 def calculate_hash(filepath):
     sha256 = hashlib.sha256()
@@ -10,5 +11,17 @@ def calculate_hash(filepath):
     except FileNotFoundError:
         return None
 
+# Scans directory and writes file signatures to baseline.txt
+def create_baseline(target_dir="target"):
+    with open("baseline.txt", "w") as f:
+        for filename in os.listdir(target_dir):
+            path = os.path.join(target_dir, filename)
+            if os.path.isfile(path):
+                f.write(f"{path}|{calculate_hash(path)}\n")
+    print("[+] Baseline created in baseline.txt")
+
+#  Automatically prepares a target directory and records baseline
 if __name__ == "__main__":
-    print("File Integrity Monitor initialized.")
+    if not os.path.exists("target"):
+        os.makedirs("target")
+    create_baseline()
