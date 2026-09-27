@@ -34,3 +34,7 @@ def check_integrity():
                 print(f"[!] TAMPERED: {path}")
             else:
                 print(f"[+] INTACT: {path}")
+                
+if __name__ == "__main__":
+    choice = input("Select mode - (1) Baseline, (2) Verify: ").strip()
+    create_baseline() if choice == "1" else check_integrity()
