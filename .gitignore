@@ -3,3 +3,4 @@ __pycache__/
 baseline.txt
 audit.log
 target/
+baseline.sig

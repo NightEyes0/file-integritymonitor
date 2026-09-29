@@ -1,7 +1,10 @@
 import hashlib
+import hmac
 import os
 import time
 from datetime import datetime
+
+SECRET_KEY = b"fim_super_secret_key_2026"
 
 def log_event(status, path):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -20,21 +23,38 @@ def calculate_hash(filepath):
     except FileNotFoundError:
         return None
 
-# UPDATED: Recursively walks through all nested subdirectories
+# NEW: Calculates HMAC-SHA256 signature for baseline file verification
+def compute_baseline_hmac():
+    if not os.path.exists("baseline.txt"):
+        return ""
+    with open("baseline.txt", "rb") as f:
+        return hmac.new(SECRET_KEY, f.read(), hashlib.sha256).hexdigest()
+
 def create_baseline(target_dir="target"):
     with open("baseline.txt", "w") as f:
         for root, _, files in os.walk(target_dir):
             for filename in files:
                 path = os.path.join(root, filename)
                 f.write(f"{path}|{calculate_hash(path)}\n")
-    log_event("BASELINE", "baseline.txt written successfully")
+    # NEW: Sign the generated baseline
+    with open("baseline.sig", "w") as f:
+        f.write(compute_baseline_hmac())
+    log_event("BASELINE", "baseline.txt and baseline.sig generated")
 
 def check_integrity(target_dir="target", state_cache=None):
-    if not os.path.exists("baseline.txt"):
-        log_event("ERROR", "No baseline found. Create one first.")
+    if not os.path.exists("baseline.txt") or not os.path.exists("baseline.sig"):
+        log_event("ERROR", "Missing baseline or signature file. Create baseline first.")
         return
+
+    # NEW: Validate HMAC signature before trusting baseline data
+    with open("baseline.sig", "r") as f:
+        recorded_sig = f.read().strip()
+    if not hmac.compare_digest(compute_baseline_hmac(), recorded_sig):
+        log_event("CRITICAL", "BASELINE POISONED! Signature mismatch on baseline.txt")
+        return
+
     with open("baseline.txt", "r") as f:
-        baseline = dict(line.strip().split("|") for line in f)
+        baseline = dict(line.strip().split("|") for line in f if "|" in line)
 
     for path, base_hash in baseline.items():
         curr_hash = calculate_hash(path)
@@ -44,7 +64,6 @@ def check_integrity(target_dir="target", state_cache=None):
             if state_cache is not None:
                 state_cache[path] = status
 
-    # UPDATED: Recursively checks nested directories for untracked files
     for root, _, files in os.walk(target_dir):
         for filename in files:
             path = os.path.join(root, filename)
