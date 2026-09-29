@@ -20,15 +20,15 @@ def calculate_hash(filepath):
     except FileNotFoundError:
         return None
 
+# UPDATED: Recursively walks through all nested subdirectories
 def create_baseline(target_dir="target"):
     with open("baseline.txt", "w") as f:
-        for filename in os.listdir(target_dir):
-            path = os.path.join(target_dir, filename)
-            if os.path.isfile(path):
+        for root, _, files in os.walk(target_dir):
+            for filename in files:
+                path = os.path.join(root, filename)
                 f.write(f"{path}|{calculate_hash(path)}\n")
     log_event("BASELINE", "baseline.txt written successfully")
 
-#Checks state_cache so events only log when status changes
 def check_integrity(target_dir="target", state_cache=None):
     if not os.path.exists("baseline.txt"):
         log_event("ERROR", "No baseline found. Create one first.")
@@ -44,17 +44,17 @@ def check_integrity(target_dir="target", state_cache=None):
             if state_cache is not None:
                 state_cache[path] = status
 
-    for filename in os.listdir(target_dir):
-        path = os.path.join(target_dir, filename)
-        if os.path.isfile(path) and path not in baseline:
-            if state_cache is None or state_cache.get(path) != "UNTRACKED":
+    # UPDATED: Recursively checks nested directories for untracked files
+    for root, _, files in os.walk(target_dir):
+        for filename in files:
+            path = os.path.join(root, filename)
+            if path not in baseline and (state_cache is None or state_cache.get(path) != "UNTRACKED"):
                 log_event("UNTRACKED", path)
                 if state_cache is not None:
                     state_cache[path] = "UNTRACKED"
 
-#Passes state_cache across polling cycles
 def monitor(target_dir="target", interval=3):
-    print(f"[*] Monitoring '{target_dir}' every {interval}s (Ctrl+C to quit)...")
+    print(f"[*] Monitoring '{target_dir}' recursively every {interval}s (Ctrl+C to quit)...")
     state_cache = {}
     try:
         while True:
